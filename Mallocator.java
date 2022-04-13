@@ -1,4 +1,5 @@
 import java.io.*;
+import java.lang.annotation.IncompleteAnnotationException;
 import java.lang.reflect.Array;
 import java.util.*;
 
@@ -48,6 +49,30 @@ public class Mallocator {
             return "id: " + this.id + " size:  " + this.size;
         }
     }
+    /**
+     * UsedMemory
+     * 
+     */
+    public class UsedMemory{
+        private int start;
+        private int end; 
+        private int id;
+        public UsedMemory(int start, int end, int id){
+           this.start = start;
+           this.end = end;
+           this.id = id;
+        }
+        public int getStart(){
+            return start;
+        }
+        @Override
+        public String toString() {
+            return "start: " + start + "end: " + end + "ProcessId: " + id;
+        }
+        
+    
+        
+    }
 
     public void dataParser(File Min, File Pin) throws Exception{
         //Parse Mem Slot Data
@@ -89,13 +114,17 @@ public class Mallocator {
     }
     public void firstFit() throws IOException{
         ArrayList<MemSlot> cpyMemList = new ArrayList<>();
+        ArrayList<ProcessData> cpyProcessList = new ArrayList<>();
         ArrayList<Integer> res = new ArrayList<>();
         ArrayList<Integer> notInserted = new ArrayList<>();
 
         for (MemSlot item : memSlotList){ 
             cpyMemList.add(new MemSlot(item));
         }
-        for (ProcessData process : processDataList) {
+        for (ProcessData item : cpyProcessList) {
+            cpyProcessList.add(new ProcessData(item));
+        }
+        for (ProcessData process : cpyProcessList) {
             for (MemSlot memSlot : cpyMemList) {
                 if(memSlot.size >= process.size){
                     memSlot.size = memSlot.size - process.size;
@@ -117,6 +146,7 @@ public class Mallocator {
         ArrayList<MemSlot> cpyMemList = new ArrayList<>();
         ArrayList<ProcessData> cpyProcessList = new ArrayList<>();
         ArrayList<Integer> res = new ArrayList<>();
+        ArrayList<UsedMemory> usedMemList = new ArrayList<>();
         ArrayList<Integer> notInserted = new ArrayList<>();
 
         for (MemSlot item : memSlotList){ 
@@ -134,8 +164,8 @@ public class Mallocator {
                 int index = 0; 
                 for (ProcessData process : cpyProcessList) {
                     //Find the best fit update minMemSize and get id
-                    System.out.println(minMemSize + "Min Mem");
                     if(minMemSize > memSlot.size-process.size && memSlot.size-process.size >= 0){
+                        System.out.println("memSlot Size: " + memSlot.size + " processSize : " + process.size);
                         minMemSize = memSlot.size-process.size;
                         processId = process.id;
                         processIndex = index;
@@ -145,9 +175,7 @@ public class Mallocator {
                 } 
                if(processId != -66){
                    //Append start and end positions to our result list
-                   res.add(memSlot.start);
-                   res.add(memSlot.end);
-                   res.add(processId);
+                   usedMemList.add(new UsedMemory(memSlot.start, memSlot.start+cpyProcessList.get(processIndex).size, processId));
                    // Update the data in the current memSlot 
                    System.out.println(processId + " index: " + index +" processIndex: " + processIndex);
                    memSlot.start += cpyProcessList.get(processIndex).size;
@@ -158,6 +186,18 @@ public class Mallocator {
             }
 
             
+        }
+        //Sort the usedMemList because some best fits occur later
+        Collections.sort(usedMemList, new Comparator<UsedMemory>(){
+            @Override
+            public int compare(UsedMemory mem1, UsedMemory mem2){
+                return Integer.compare(mem1.getStart(), mem2.getStart()); 
+            }
+        });
+        for (UsedMemory item : usedMemList) {
+            res.add(item.start);
+            res.add(item.end);
+            res.add(item.id);
         }
         readMemList(cpyMemList);
         outputFile("BF", res, notInserted);
