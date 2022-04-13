@@ -129,50 +129,36 @@ public class Mallocator {
         for (int i = 0; i < processListSize; i++) {
             for (MemSlot memSlot : cpyMemList) {
                 int minMemSize = Integer.MAX_VALUE;
-                int processId = -66; 
+                int processId = -66;
+                int processIndex = 0;
+                int index = 0; 
                 for (ProcessData process : cpyProcessList) {
                     //Find the best fit update minMemSize and get id
-                    if(minMemSize > memSlot.size-process.size){
+                    System.out.println(minMemSize + "Min Mem");
+                    if(minMemSize > memSlot.size-process.size && memSlot.size-process.size >= 0){
                         minMemSize = memSlot.size-process.size;
                         processId = process.id;
+                        processIndex = index;
                     }
-            
+                    index++;
+                    
                 } 
-               //Remove assigned process from out list
-               if(processId != 66){
-                   cpyProcessList.remove(processId-1);
+               if(processId != -66){
+                   //Append start and end positions to our result list
+                   res.add(memSlot.start);
+                   res.add(memSlot.end);
+                   res.add(processId);
+                   // Update the data in the current memSlot 
+                   System.out.println(processId + " index: " + index +" processIndex: " + processIndex);
+                   memSlot.start += cpyProcessList.get(processIndex).size;
+                   memSlot.size -= cpyProcessList.get(processIndex).size;
+                   //Remove assigned process from out list
+                   cpyProcessList.remove(processIndex);
                }
             }
 
             
         }
-
-        //for (ProcessData process : processDataList) {
-            //int[] arr = new int[2];
-            //arr[0] = Integer.MAX_VALUE;
-            //int i = 0;
-            //for (MemSlot memSlot : cpyMemList) {
-                //System.out.println(arr[0]);
-                ////Place the remaing size in memory. Only if the remaing size is smaller than the memory already stored. And not negative.
-                //if(arr[0] >  memSlot.size - process.size && memSlot.size - process.size >= 0){
-                    //arr[0] = memSlot.size - process.size;
-                    //arr[1] = i; 
-                //}
-                //i++;
-            //}
-            //if((Integer)arr[0] == Integer.MAX_VALUE){
-                //notInserted.add(process.id);
-            //}else{
-                ////Update the size of the memslot used 
-                //cpyMemList.get(arr[1]).size = cpyMemList.get(arr[1]).size - process.size;
-
-                //MemSlot bestFitMemSlot = cpyMemList.get(arr[1]);
-                //res.add(bestFitMemSlot.start);
-                //res.add(bestFitMemSlot.end);
-                //res.add(process.id);
-            //} 
-        //}
-
         readMemList(cpyMemList);
         outputFile("BF", res, notInserted);
     }
@@ -206,6 +192,6 @@ public class Mallocator {
         Mallocator mem = new Mallocator();
         mem.dataParser(Min, Pin);
         mem.firstFit();
-        //mem.bestFit();
+        mem.bestFit();
     }
 }
