@@ -112,6 +112,40 @@ public class Mallocator {
             System.out.println(proccessData);
         }
     }
+    public void sortMemList(ArrayList<MemSlot> cpyMemList){
+        Collections.sort(cpyMemList, new Comparator<MemSlot>() {
+           @Override 
+           public int compare(MemSlot mem1, MemSlot mem2){
+               return Integer.compare(mem1.size, mem2.size);
+
+           } 
+        });
+    } 
+    public void reverseSortMemList(ArrayList<MemSlot> cpyMemList){
+        Collections.sort(cpyMemList, new Comparator<MemSlot>() {
+           @Override 
+           public int compare(MemSlot mem1, MemSlot mem2){
+               return Integer.compare(mem1.size, mem2.size) *-1;
+
+           } 
+        });
+    } 
+    public void sortProcessList(ArrayList<ProcessData> cpyProcessList){
+        Collections.sort(cpyProcessList, new Comparator<ProcessData>() {
+           @Override
+           public int compare(ProcessData data1, ProcessData data2){
+               return Integer.compare(data1.size, data2.size);
+           } 
+        });
+    }
+    public void sortUsedMem(ArrayList<UsedMemory> usedMemList){
+        Collections.sort(usedMemList, new Comparator<UsedMemory>(){
+            @Override
+            public int compare(UsedMemory mem1, UsedMemory mem2){
+                return Integer.compare(mem1.getStart(), mem2.getStart()); 
+            }
+        });
+    }
     public void firstFit() throws IOException{
         ArrayList<MemSlot> cpyMemList = new ArrayList<>();
         ArrayList<ProcessData> cpyProcessList = new ArrayList<>();
@@ -121,7 +155,7 @@ public class Mallocator {
         for (MemSlot item : memSlotList){ 
             cpyMemList.add(new MemSlot(item));
         }
-        for (ProcessData item : cpyProcessList) {
+        for (ProcessData item : processDataList) {
             cpyProcessList.add(new ProcessData(item));
         }
         for (ProcessData process : cpyProcessList) {
@@ -155,52 +189,67 @@ public class Mallocator {
         for (ProcessData item : processDataList) {
            cpyProcessList.add(new ProcessData(item)); 
         }
-        int processListSize = cpyProcessList.size();
-        for (int i = 0; i < processListSize; i++) {
-            for (MemSlot memSlot : cpyMemList) {
-                int minMemSize = Integer.MAX_VALUE;
-                int processId = -66;
-                int processIndex = 0;
-                int index = 0; 
-                for (ProcessData process : cpyProcessList) {
-                    //Find the best fit update minMemSize and get id
-                    if(minMemSize > memSlot.size-process.size && memSlot.size-process.size >= 0){
-                        System.out.println("memSlot Size: " + memSlot.size + " processSize : " + process.size);
-                        minMemSize = memSlot.size-process.size;
-                        processId = process.id;
-                        processIndex = index;
-                    }
-                    index++;
-                    
-                } 
-               if(processId != -66){
-                   //Append start and end positions to our result list
-                   usedMemList.add(new UsedMemory(memSlot.start, memSlot.start+cpyProcessList.get(processIndex).size, processId));
-                   // Update the data in the current memSlot 
-                   System.out.println(processId + " index: " + index +" processIndex: " + processIndex);
-                   memSlot.start += cpyProcessList.get(processIndex).size;
-                   memSlot.size -= cpyProcessList.get(processIndex).size;
-                   //Remove assigned process from out list
-                   cpyProcessList.remove(processIndex);
+        sortMemList(cpyMemList);
+        for (ProcessData process : cpyProcessList) {
+           for (MemSlot memSlot : cpyMemList) {
+               //Check if the process is not already inserted and that their is enough space for the process
+               if(memSlot.size-process.size >= 0 && process.size != -1){
+                   memSlot.size -= process.size;
+                   usedMemList.add(new UsedMemory(memSlot.start, memSlot.start + process.size, process.id));
+                   memSlot.start += process.size;
+                   process.size = -1; 
                }
-            }
-
-            
+           }
+           sortMemList(cpyMemList);
+           if(process.size != -1){
+               notInserted.add(process.id);
+           }
         }
-        //Sort the usedMemList because some best fits occur later
-        Collections.sort(usedMemList, new Comparator<UsedMemory>(){
-            @Override
-            public int compare(UsedMemory mem1, UsedMemory mem2){
-                return Integer.compare(mem1.getStart(), mem2.getStart()); 
-            }
-        });
+
+        sortUsedMem(usedMemList);
         for (UsedMemory item : usedMemList) {
             res.add(item.start);
             res.add(item.end);
             res.add(item.id);
         }
-        readMemList(cpyMemList);
         outputFile("BF", res, notInserted);
+    }
+    public void worstFit() throws IOException{
+        ArrayList<MemSlot> cpyMemList = new ArrayList<>();
+        ArrayList<ProcessData> cpyProcessList = new ArrayList<>();
+        ArrayList<Integer> res = new ArrayList<>();
+        ArrayList<UsedMemory> usedMemList = new ArrayList<>();
+        ArrayList<Integer> notInserted = new ArrayList<>();
+
+        for (MemSlot item : memSlotList){ 
+            cpyMemList.add(new MemSlot(item));
+        }
+        for (ProcessData item : processDataList) {
+           cpyProcessList.add(new ProcessData(item)); 
+        }
+        reverseSortMemList(cpyMemList);
+        for (ProcessData process : cpyProcessList) {
+           for (MemSlot memSlot : cpyMemList) {
+               //Check if the process is not already inserted and that their is enough space for the process
+               if(memSlot.size-process.size >= 0 && process.size != -1){
+                   memSlot.size -= process.size;
+                   usedMemList.add(new UsedMemory(memSlot.start, memSlot.start + process.size, process.id));
+                   memSlot.start += process.size;
+                   process.size = -1; 
+               }
+           }
+           reverseSortMemList(cpyMemList);
+           if(process.size != -1){
+               notInserted.add(process.id);
+           }
+        }
+        sortUsedMem(usedMemList);
+        for (UsedMemory item : usedMemList) {
+            res.add(item.start);
+            res.add(item.end);
+            res.add(item.id);
+        }
+        outputFile("WF", res, notInserted);
     }
     public void outputFile(String name, ArrayList<Integer> inserted, ArrayList<Integer> notInserted) throws IOException{
         String FileName = name + "output.data";
@@ -233,5 +282,6 @@ public class Mallocator {
         mem.dataParser(Min, Pin);
         mem.firstFit();
         mem.bestFit();
+        mem.worstFit();
     }
 }
